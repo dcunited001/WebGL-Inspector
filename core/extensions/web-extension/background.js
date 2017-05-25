@@ -4,24 +4,42 @@ console.log("bg.js: onmesage");
     if (request.present) {
 console.log("bg.js: onmesage -present");
         // Show the page action for the tab that the sender (content script) was on.
-        browser.pageAction.show(sender.tab.id);
+        if (global["browser"]) {
+            browser.pageAction.show(sender.tab.id);
+        } else if (window["chrome"]) {
+            chrome.pageAction.show(sender.tab.id);
+        }
     }
 
     // Return nothing to let the connection be cleaned up.
     sendResponse({});
 };
 
-// Listen for the content script to send a message to the background page.
-browser.runtime.onMessage.addListener(onMessage);
+var global = this;
 
-browser.tabs.onUpdated.addListener((id, changeInfo, tab) => {
-    browser.pageAction.show(tab.id);
-});
+if (global["browser"]) {
+    // Listen for the content script to send a message to the background page.
+    browser.runtime.onMessage.addListener(onMessage);
 
-browser.pageAction.onClicked.addListener(function (tab) {
-    browser.tabs.sendMessage(tab.id, {
-        reload: true
-    }).catch(e => {
-        console.error(e);
+    browser.tabs.onUpdated.addListener((id, changeInfo, tab) => {
+        browser.pageAction.show(tab.id);
     });
-});
+
+    browser.pageAction.onClicked.addListener(function (tab) {
+        browser.tabs.sendMessage(tab.id, {
+            reload: true
+        }).catch(e => {
+            console.error(e);
+        });
+    });
+} else if (window["chrome"]) {
+    chrome.extension.onRequest.addListener(onMessage);
+
+    chrome.pageAction.onClicked.addListener(function (tab) {
+        chrome.tabs.sendRequest(tab.id, {
+            reload: true
+        }, function(response) {
+
+        });
+    });
+}
